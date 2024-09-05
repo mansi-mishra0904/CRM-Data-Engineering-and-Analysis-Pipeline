@@ -1,5 +1,14 @@
 import logging
 from pyspark.sql import SparkSession, DataFrame
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Initialize Spark Session
+# Initialize Spark session
+spark = SparkSession.builder \
+    .appName("Interaction Analysis") \
+    .getOrCreate()
 
 # Configure logging
 logging.basicConfig(
@@ -14,6 +23,9 @@ logging.basicConfig(
 logger = logging.getLogger()
 
 def print_green(text: str):
+    """
+    Print text in green to the console and log it.
+    """
     logger.info(f"\033[92m{text}\033[0m")
 
 def validate_ids(df1: DataFrame, df2: DataFrame, df1_col: str, df2_col: str, id_name: str):
@@ -30,38 +42,62 @@ def validate_ids(df1: DataFrame, df2: DataFrame, df1_col: str, df2_col: str, id_
     else:
         logger.info(f"All {id_name}s from {df1_col.split('_')[0]}.csv are present in {df2_col.split('_')[0]}.csv.")
 
-# Initialize Spark Session
-spark = SparkSession.builder.appName("CRM_Data_Validation").getOrCreate()
+def initialize_spark_session(app_name: str) -> SparkSession:
+    """
+    Initialize and return a Spark session.
+    """
+    return SparkSession.builder.appName(app_name).getOrCreate()
 
-# Load data from CSV files into DataFrames
-data_files = {
-    "customers": "Dataset/customers.csv",
-    "products": "Dataset/products.csv",
-    "transactions": "Dataset/transactions.csv",
-    "interactions": "Dataset/interactions.csv",
-    "sales_team": "Dataset/sales_team.csv"
-}
+def load_data_files(file_paths: dict) -> dict:
+    """
+    Load CSV files into Spark DataFrames.
+    """
+    return {name: spark.read.csv(file, header=True, inferSchema=True) for name, file in file_paths.items()}
 
-dfs = {name: spark.read.csv(file, header=True, inferSchema=True) for name, file in data_files.items()}
+def display_dataframes(dfs: dict):
+    """
+    Display the first 5 records for each DataFrame.
+    """
+    for name, df in dfs.items():
+        print_green(f"{name.capitalize()} DataFrame:")
+        df.show(5, truncate=False)
+        logger.info(f"Displayed first 5 records for {name.capitalize()} DataFrame.")
 
-# Display initial records for each DataFrame
-for name, df in dfs.items():
-    print_green(f"{name.capitalize()} DataFrame:")
-    df.show(5, truncate=False)
-    logger.info(f"Displayed first 5 records for {name.capitalize()} DataFrame.")
+def validate_data(dfs: dict, validations: list):
+    """
+    Validate data between DataFrames based on the provided validation rules.
+    """
+    for df1_name, df2_name, id_name in validations:
+        print_green(f"Verifying {id_name} matches between {df1_name}.csv and {df2_name}.csv...")
+        logger.info(f"Starting validation of {id_name} between {df1_name}.csv and {df2_name}.csv.")
+        validate_ids(dfs[df1_name], dfs[df2_name], id_name, id_name, id_name)
 
-# Verify Data Accuracy
-validations = [
-    ("transactions", "customers", "Customer_ID"),
-    ("interactions", "customers", "Customer_ID"),
-    ("transactions", "products", "Product_ID"),
-    ("transactions", "sales_team", "Sales_Rep_ID")
-]
+def main():
+    # Load data from CSV files into DataFrames
+    data_files = {
+        "customers": "Dataset/customers.csv",
+        "products": "Dataset/products.csv",
+        "transactions": "Dataset/transactions.csv",
+        "interactions": "Dataset/interactions.csv",
+        "sales_team": "Dataset/sales_team.csv"
+    }
+    
+    dfs = load_data_files(data_files)
+    
+    # Display initial records for each DataFrame
+    display_dataframes(dfs)
+    
+    # Verify Data Accuracy
+    validations = [
+        ("transactions", "customers", "Customer_ID"),
+        ("interactions", "customers", "Customer_ID"),
+        ("transactions", "products", "Product_ID"),
+        ("transactions", "sales_team", "Sales_Rep_ID")
+    ]
+    
+    validate_data(dfs, validations)
+    
+    logger.info("Data validation completed.")
 
-for df1_name, df2_name, id_name in validations:
-    print_green(f"Verifying {id_name} matches between {df1_name}.csv and {df2_name}.csv...")
-    logger.info(f"Starting validation of {id_name} between {df1_name}.csv and {df2_name}.csv.")
-    validate_ids(dfs[df1_name], dfs[df2_name], id_name, id_name, id_name)
-
-print_green("Data validation completed.")
-logger.info("Data validation completed.")
+if __name__ == "__main__":
+    main()
