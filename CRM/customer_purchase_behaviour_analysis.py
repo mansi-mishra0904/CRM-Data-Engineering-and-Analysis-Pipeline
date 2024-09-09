@@ -12,10 +12,10 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import col, sum as _sum, avg, count, round, to_date, date_format
 import pandas as pd
 import numpy as np
-import seaborn as sns
+import logging
 import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
-import matplotlib.patches as patches
+import os
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -25,9 +25,16 @@ spark = SparkSession.builder \
     .appName("Customer Purchase Behavior Analysis") \
     .getOrCreate()
 
-# Define a function to print in green
-def print_green(text):
-    print(f"\033[92m{text}\033[0m")
+# Commented out IPython magic to ensure Python compatibility.
+# %run utility/common_utility.ipynb
+# %run Utilities/bar_plot_with_line.ipynb
+
+"""# Logs Configurations"""
+
+log_file_path = 'logs/customers_purchase_behaviour_analysis.log'
+logger = initialize_logger(log_file_path)
+
+logger.info("Logger initialized with dynamic path!")
 
 """# Problem Statement 2: Customer Purchase Behavior Analysis
 **Objective**: Analyse and report on customer purchase behaviours to understand spending patterns and customer segmentation.
@@ -40,6 +47,8 @@ def print_green(text):
 - A report summarizing top-spending customers, spending distribution by country, and notable trends or patterns in purchasing behaviour.
 
 """
+
+
 
 # Load data into Spark DataFrames
 customers_df = spark.read.csv("Cleaned_data/cleaned_customers.csv", header=True, inferSchema=True)
@@ -62,7 +71,7 @@ customer_spending_df = transactions_df.groupBy("Customer_ID") \
 customer_behavior_df = customer_spending_df.join(customers_df, on="Customer_ID", how="inner")
 
 # Select relevant columns to display the combined customer spending metrics and segmentation data
-print_green("Total Spending, Average Transaction Amount, and Purchase Frequency for Each Customer")
+logger.info("Total Spending, Average Transaction Amount, and Purchase Frequency for Each Customer")
 customer_behavior_df.select(["Customer_ID", "Name", "Total_Spending", "Average_Transaction_Amount", "Purchase_Frequency", "Country"]).show(5)
 
 """## 1. Top 20 most active customers based on purchase frequency"""
@@ -77,83 +86,25 @@ customer_behavior_df = customer_spending_df.join(customer_details_df, on="Custom
 top_active_customers_df = customer_behavior_df.orderBy(col("Purchase_Frequency").desc()).limit(20)
 top_active_customers_pd_df = top_active_customers_df.toPandas()
 
-# Define a colormap for shades of blue and reverse it
-# Generate a color map for visual differentiation based on country, using shades of blue to represent different countries.
-cmap = get_cmap('Blues')
-unique_countries = top_active_customers_pd_df['Country'].unique()
-colors = cmap(np.linspace(0, 1, len(unique_countries)))[::-1]  # Reverse the colormap to ensure the darkest shade is used first
-color_dict = dict(zip(unique_countries, colors))
+logger.info("Top 20 Frequent Customers by Purchase Behavior")
 
-# Map the colors to the DataFrame based on country
-# Add a new column to the DataFrame to assign a color to each customer based on their country for visualization purposes.
-top_active_customers_pd_df['Color'] = top_active_customers_pd_df['Country'].map(color_dict)
-
-# Create the bar chart with line plot for Purchase Frequency
-# Initialize the figure and axis for plotting.
-fig, ax1 = plt.subplots(figsize=(14, 5))
-
-# Bar plot for Purchase Frequency
-# Plot a bar chart to visualize the purchase frequency of the top 10 customers, with colors representing their countries.
-bars = ax1.bar(
-    top_active_customers_pd_df['Name'],
-    top_active_customers_pd_df['Purchase_Frequency'],
-    color=top_active_customers_pd_df['Color'],
-    label='Purchase Frequency',
-    edgecolor='black'
+# Call the existing function with your data
+plot_dual_axis_bar_line(
+    data_pd=top_active_customers_pd_df,        # Data for the plot
+    x_labels='Name',                           # Column for customer names (x-axis)
+    bar_col='Purchase_Frequency',              # Column for bar values (purchase frequency)
+    line_col='Average_Transaction_Amount',     # Column for line values (average transaction amount)
+    bar_label='Purchase Frequency',            # Label for bar plot
+    line_label='Avg Transaction Amount',       # Label for line plot
+    title='Top 20 Frequent Customers by Purchase Behavior',  # Plot title
+    x_title='Customer Name',                   # x-axis label
+    bar_y_title='Purchase Frequency',          # y-axis label for bars
+    line_y_title='Average Transaction Amount', # y-axis label for line
+    cmap='Blues',                              # Colormap for bars
+    line_color='orange',                       # Line color
+    figsize=(14, 6),                           # Figure size
+    rotation=45                                # Rotation for x-axis labels
 )
-
-# Create a second y-axis for Average Transaction Amount
-# Add a second y-axis to the same plot to display the average transaction amount alongside the purchase frequency.
-ax2 = ax1.twinx()
-lines = ax2.plot(
-    top_active_customers_pd_df['Name'],
-    top_active_customers_pd_df['Average_Transaction_Amount'],
-    color='orange',
-    marker='o',
-    linestyle='-',
-    linewidth=2,
-    markersize=8,
-    label='Avg Transaction Amount'
-)
-
-# Add labels on top of bars with integer values
-# Annotate each bar with its height value to provide clear information on the purchase frequency for each customer.
-for bar in bars:
-    yval = bar.get_height()
-    ax1.text(
-        bar.get_x() + bar.get_width() / 2.0,
-        yval + 0.05 * max(top_active_customers_pd_df['Purchase_Frequency']),
-        f'{int(yval)}',  # Display the purchase frequency as an integer
-        ha='center',
-        va='bottom'
-    )
-
-# Customize the layout
-# Set labels, titles, and gridlines to enhance the readability and presentation of the chart.
-ax1.set_xlabel('Customer Name')
-ax1.set_ylabel('Purchase Frequency')
-ax1.set_title('Top 20 Frequent Customers by Purchase Behavior', fontweight='bold')
-ax1.set_xticklabels(top_active_customers_pd_df['Name'], rotation=45, ha='right')
-ax1.grid(axis='y', linestyle='--', alpha=0.7)
-ax2.set_ylabel('Average Transaction Amount', color='orange')
-
-# Create a custom legend
-# Add a legend to the plot to identify the colors representing different countries.
-legend_patches = [patches.Patch(color=color_dict[country], label=country) for country in unique_countries]
-ax1.legend(
-    handles=legend_patches,
-    title='Country',
-    bbox_to_anchor=(1.05, 1),  # Move legend to the right side of the plot
-    loc='upper left',
-    title_fontsize='13',
-    fontsize='10'
-)
-ax2.legend(loc='upper right')
-
-# Adjust layout to make space for the legend
-# Ensure the plot is adjusted to accommodate the legend and labels without overlapping.
-plt.tight_layout(rect=[0, 0, 0.8, 1])  # Adjust right space for legend
-plt.show()
 
 """## 2. Top 20 spending customers with Average Transaction Amount"""
 
@@ -175,80 +126,25 @@ customer_spending_with_details_df = customer_spending_df.join(
 # Identify top 20 customers based on total spending
 top_customers_df = customer_spending_with_details_df.orderBy(col("Total_Spending").desc()).limit(20)
 top_customers_pd_df = top_customers_df.toPandas()
+logger.info("Top 20 Spending Customers with Average Transaction Amount")
 
-# Define a colormap for shades of blue and reverse it
-cmap = get_cmap('Blues')
-unique_countries = top_customers_pd_df['Country'].unique()
-colors = cmap(np.linspace(0, 1, len(unique_countries)))[::-1]  # Reverse the colormap for better contrast
-color_dict = dict(zip(unique_countries, colors))
-
-# Map the colors to the DataFrame based on country
-top_customers_pd_df['Color'] = top_customers_pd_df['Country'].map(color_dict)
-
-# Create the bar chart with line plot for Average Transaction Amount
-fig, ax1 = plt.subplots(figsize=(14, 5))
-
-# Bar plot for Total Spending
-bars = ax1.bar(
-    top_customers_pd_df['Name'],
-    top_customers_pd_df['Total_Spending'],
-    color=top_customers_pd_df['Color'],
-    label='Total Spending',
-    edgecolor='black'
+# Call the existing function with your data
+plot_dual_axis_bar_line(
+    data_pd=top_customers_pd_df,                # Data for the plot
+    x_labels='Name',                            # Column for customer names (x-axis)
+    bar_col='Total_Spending',                   # Column for bar values (total spending)
+    line_col='Average_Transaction_Amount',      # Column for line values (average transaction amount)
+    bar_label='Total Spending',                 # Label for bar plot
+    line_label='Avg Transaction Amount',        # Label for line plot
+    title='Top 20 Spending Customers with Average Transaction Amount',  # Plot title
+    x_title='Customer Name',                    # x-axis label
+    bar_y_title='Total Spending',               # y-axis label for bars
+    line_y_title='Average Transaction Amount',  # y-axis label for line
+    cmap='Blues',                               # Colormap for bars
+    line_color='orange',                        # Line color
+    figsize=(14, 6),                            # Figure size
+    rotation=45                                 # Rotation for x-axis labels
 )
-
-# Create a second y-axis for Average Transaction Amount
-ax2 = ax1.twinx()
-lines = ax2.plot(
-    top_customers_pd_df['Name'],
-    top_customers_pd_df['Average_Transaction_Amount'],
-    color='orange',
-    marker='o',
-    linestyle='-',
-    linewidth=2,
-    markersize=8,
-    label='Avg Transaction Amount'
-)
-
-# Add labels on top of bars with a slight tilt
-for bar in bars:
-    yval = bar.get_height()
-    ax1.text(
-        bar.get_x() + bar.get_width() / 2.0,
-        yval + 0.05 * max(top_customers_pd_df['Total_Spending']),
-        f'{yval:.2f}',
-        ha='center',
-        va='bottom',
-        fontsize=10,
-        rotation=45  # Tilt the label by 45 degrees
-    )
-
-# Customize the layout
-ax1.set_xlabel('Customer Name')
-ax1.set_ylabel('Total Spending')
-ax1.set_title('Top 20 Spending Customers with Average Transaction Amount', fontweight='bold')
-ax1.set_xticklabels(top_customers_pd_df['Name'], rotation=45, ha='right')
-ax1.grid(axis='y', linestyle='--', alpha=0.7)
-
-ax2.set_ylabel('Average Transaction Amount', color='orange')
-
-# Create a custom legend
-legend_patches = [patches.Patch(color=color_dict[country], label=country) for country in unique_countries]
-ax1.legend(
-    handles=legend_patches,
-    title='Country',
-    bbox_to_anchor=(1.05, 1),  # Move legend to the right side of the plot
-    loc='upper left',
-    title_fontsize='13',
-    fontsize='10'
-)
-ax2.legend(loc='upper right')
-
-# Adjust layout to make space for the legend
-plt.tight_layout(rect=[0, 0, 0.8, 1])  # Adjust right space for legend
-
-# Show the plot
-plt.show()
 
 """## 3. Spending Distribution by Country"""
 
@@ -264,9 +160,9 @@ country_spending_df = customer_behavior_df.groupBy("Country") \
 # Display the results
 # Order by total spending in descending order to see which countries have the highest total spending.
 # The results are then shown to provide a clear view of spending distribution by country.
-print_green("Aggregated Spending Data by Country: Total Spending, Avg Transaction Amount, Customer Count")
+logger.info("Aggregated Spending Data by Country: Total Spending, Avg Transaction Amount, Customer Count")
 country_spending_df = country_spending_df.orderBy(col("Total_Spending_By_Country").desc())
-country_spending_df.orderBy(col("Customer_Count_By_Country").desc()).show()
+country_spending_df.orderBy(col("Customer_Count_By_Country").desc()).show(5)
 
 """# 4. Top 20 Countries by Number of Customers, Total Spending, and Avg Transaction Amount"""
 
@@ -277,94 +173,33 @@ country_spending_pd_df = country_spending_df.toPandas()
 # Sort by Customer_Count_By_Country in descending order and get the top 20 countries
 # Sorting data to focus on the top 20 countries with the highest customer counts for detailed analysis.
 top_countries_df = country_spending_pd_df.sort_values(by="Customer_Count_By_Country", ascending=False).head(20)
+logger.info("Top 20 Countries by Number of Customers, Total Spending, and Avg Transaction Amount")
 
-# Define a colormap for shades of blue
-# Setting up a colormap to visually differentiate countries using a gradient of blue shades.
-cmap = get_cmap('Blues')
-# Create a color map for countries
-num_countries = len(top_countries_df)
-colors = cmap(np.linspace(0, 1, num_countries))[::-1]  # Use a range of shades for better visual distinction
-color_dict = dict(zip(top_countries_df['Country'], colors))
-
-# Plot the top 20 countries with the maximum number of customers
-fig, ax1 = plt.subplots(figsize=(14, 8))
-
-# Bar plot for Customer Count
-# Creating a bar plot to show the number of customers for each country. Bars are colored based on the colormap.
-bars = ax1.bar(
-    top_countries_df['Country'],
-    top_countries_df['Customer_Count_By_Country'],
-    color=[color_dict[country] for country in top_countries_df['Country']],
-    edgecolor='black'
+# Use the function to plot top countries by number of customers, total spending, and average transaction amount
+plot_triple_axis_bar_line(
+    data_pd=top_countries_df,                         # Data for the plot
+    x_labels='Country',                               # Column for countries (x-axis)
+    bar_col='Customer_Count_By_Country',              # Column for the bar plot (customer count)
+    line1_col='Total_Spending_By_Country',            # Column for the first line plot (total spending)
+    line2_col='Avg_Transaction_Amount_By_Country',    # Column for the second line plot (avg transaction amount)
+    bar_label='Customer Count',                       # Label for the bar plot
+    line1_label='Total Spending',                     # Label for the first line plot
+    line2_label='Avg Transaction Amount',             # Label for the second line plot
+    title='Top 20 Countries by Customers, Spending, and Avg Transaction',  # Plot title
+    x_title='Country',                                # x-axis label
+    bar_y_title='Number of Customers',                # y-axis label for bars
+    line1_y_title='Total Spending',                   # y-axis label for first line plot
+    line2_y_title='Avg Transaction Amount',           # y-axis label for second line plot
+    cmap='Blues',                                     # Colormap for bars
+    line1_color='orange',                             # Color for the first line plot
+    line2_color='green',                              # Color for the second line plot
+    figsize=(14, 6),                                  # Figure size
+    rotation=45                                       # Rotation for x-axis labels
 )
-
-# Add labels on top of bars
-# Adding data labels on top of the bars to provide exact customer counts for clarity.
-for bar in bars:
-    yval = bar.get_height()
-    ax1.text(
-        bar.get_x() + bar.get_width() / 2.0,
-        yval + 0.05 * max(top_countries_df['Customer_Count_By_Country']),
-        f'{yval:.0f}',
-        ha='center',
-        va='bottom'
-    )
-
-# Create a second y-axis for Total Spending
-# Adding a secondary y-axis to plot total spending data alongside customer counts.
-ax2 = ax1.twinx()
-lines_total_spending = ax2.plot(
-    top_countries_df['Country'],
-    top_countries_df['Total_Spending_By_Country'],
-    color='orange',
-    marker='o',
-    linestyle='-',
-    linewidth=2,
-    markersize=8,
-    label='Total Spending'
-)
-
-# Create a third y-axis for Average Transaction Amount
-# Adding a third y-axis to plot the average transaction amount data. This axis is shifted outward for clarity.
-ax3 = ax1.twinx()
-ax3.spines['right'].set_position(('outward', 60))  # Adjust position to avoid overlap with other axes
-lines_avg_transaction = ax3.plot(
-    top_countries_df['Country'],
-    top_countries_df['Avg_Transaction_Amount_By_Country'],
-    color='green',
-    marker='s',
-    linestyle='--',
-    linewidth=2,
-    markersize=8,
-    label='Avg Transaction Amount'
-)
-
-# Customize the layout
-# Setting axis labels, title, and grid for the bar plot. Ensuring clear presentation of all plotted data.
-ax1.set_xlabel('Country')
-ax1.set_ylabel('Number of Customers')
-ax1.set_title('Top 20 Countries by Number of Customers, Total Spending, and Avg Transaction Amount', fontweight='bold')
-ax1.set_xticklabels(top_countries_df['Country'], rotation=45, ha='right')
-ax1.grid(axis='y', linestyle='--', alpha=0.7)
-
-# Set labels for the secondary y-axes
-ax2.set_ylabel('Total Spending', color='orange')
-ax3.set_ylabel('Avg Transaction Amount', color='green')
-
-# Add custom legends
-# Creating and positioning legends for the bar plot, total spending line plot, and average transaction amount line plot.
-ax1.legend(handles=[bars[0]], title='Customer Count', loc='upper left')
-ax2.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), title='Metrics')
-ax3.legend(loc='upper right')
-
-# Adjust layout to make space for the legends
-# Ensuring that the plot layout is adjusted to accommodate the legends and make the visualization clear.
-plt.tight_layout()
-plt.show()
 
 """# 5. Grouping Customers based on their spending behaviour"""
 
-print_green('Customer Segmentation by Spending Behaviour')
+logger.info('Customer Segmentation by Spending Behaviour')
 
 # Step 1: Join transactions with customers to get customer details
 transactions_customers_df = transactions_df.join(customers_df, on="Customer_ID", how="inner")
@@ -407,36 +242,11 @@ customer_count_by_cluster = country_clustered_df.groupBy("Cluster_Name") \
     .agg(F.sum("Customer_Count_By_Country").alias("Total_Customers")) \
     .toPandas()
 
-# Display the customer count by cluster
-print_green("Customer Count by Cluster")
+
+ # Log the cluster counts
+logger.info("Customer Count by Cluster")
 print(customer_count_by_cluster)
-
-# Define a colormap for shades of green
-cmap = get_cmap('Blues')
-num_clusters = len(customer_count_by_cluster)
-colors = cmap(np.linspace(0.5, 1, num_clusters))  # Create different shades of green
-
-# Map colors to clusters
-color_dict = dict(zip(customer_count_by_cluster['Cluster_Name'], colors))
-
-# Plot the clusters
-plt.figure(figsize=(10, 6))
-sns.scatterplot(
-    x='Total_Spending_By_Country',
-    y='Avg_Transaction_Amount_By_Country',
-    hue='Cluster_Name',
-    palette=color_dict,  # Use shades of green
-    data=country_clustered_df.toPandas(),
-    s=100
-)
-
-# Customize the plot
-plt.title('Customer Segmentation by Spending Behaviour')
-plt.xlabel('Total Spending by Country')
-plt.ylabel('Average Transaction Amount by Country')
-plt.legend(title='Cluster')
-
-plt.show()
+customer_segmentation_by_spending_behavior(transactions_df, customers_df)
 
 """# 6. Top 20 Countries by Number of Orders"""
 
@@ -456,81 +266,28 @@ country_agg_pd_df = country_agg_df.toPandas()
 
 # Step 3: Sort the data by 'Total_Orders' and take the top 20 countries
 top_countries_df = country_agg_pd_df.sort_values(by="Total_Orders", ascending=False).head(20)
-
-# Step 4: Define a colormap for shades of blue
-cmap = get_cmap('Blues')
-num_countries = len(top_countries_df)
-colors = cmap(np.linspace(0, 1, num_countries))[::-1]  # Reverse the colormap
-color_dict = dict(zip(top_countries_df['Country'], colors))
-
-# Step 5: Plotting
-fig, ax1 = plt.subplots(figsize=(14, 8))
-
-# Bar plot for Total Orders
-bars = ax1.bar(
-    top_countries_df['Country'],
-    top_countries_df['Total_Orders'],
-    color=[color_dict[country] for country in top_countries_df['Country']],
-    edgecolor='black'
+logger.info("Top 20 Countries by Total Orders, Total Revenue, and Total Customers")
+# Step 5: Call the plot_triple_axis_bar_line function
+plot_triple_axis_bar_line(
+    data_pd=top_countries_df,
+    x_labels='Country',                  # X-axis: Country names
+    bar_col='Total_Orders',              # Bar plot: Total Orders
+    line1_col='Total_Revenue',           # First line plot: Total Revenue
+    line2_col='Total_Customers',         # Second line plot: Total Customers
+    bar_label='Total Orders',            # Bar label
+    line1_label='Total Revenue',         # Line 1 label
+    line2_label='Total Customers',       # Line 2 label
+    title='Top 20 Countries by Total Orders, Total Revenue, and Total Customers',  # Plot title
+    x_title='Country',                   # X-axis title
+    bar_y_title='Total Orders',          # Y-axis title for the bar plot
+    line1_y_title='Total Revenue',       # Y-axis title for the first line plot
+    line2_y_title='Total Customers',     # Y-axis title for the second line plot
+    cmap=get_cmap('Blues'),                           # Colormap for bars
+    line1_color='orange',                # Line 1 color (Revenue)
+    line2_color='green',                 # Line 2 color (Customers)
+    figsize=(14, 6),                     # Figure size
+    rotation=45                          # Rotation for x-axis labels
 )
-
-# Add labels on top of bars
-for bar in bars:
-    yval = bar.get_height()
-    ax1.text(
-        bar.get_x() + bar.get_width() / 2.0,
-        yval + 0.05 * max(top_countries_df['Total_Orders']),
-        f'{yval:.0f}',
-        ha='center',
-        va='bottom'
-    )
-
-# Create a second y-axis for Total Revenue
-ax2 = ax1.twinx()
-lines_total_revenue = ax2.plot(
-    top_countries_df['Country'],
-    top_countries_df['Total_Revenue'],
-    color='orange',
-    marker='o',
-    linestyle='-',
-    linewidth=2,
-    markersize=8,
-    label='Total Revenue'
-)
-
-# Create a third y-axis for Total Customers
-ax3 = ax1.twinx()
-ax3.spines['right'].set_position(('outward', 60))  # Adjust position to avoid overlap with other axes
-lines_total_customers = ax3.plot(
-    top_countries_df['Country'],
-    top_countries_df['Total_Customers'],
-    color='green',
-    marker='s',
-    linestyle='--',
-    linewidth=2,
-    markersize=8,
-    label='Total Customers'
-)
-
-# Customize the layout
-ax1.set_xlabel('Country')
-ax1.set_ylabel('Total Orders')
-ax1.set_title('Top 20 Countries by Total Orders, Total Revenue, and Total Customers', fontweight='bold')
-ax1.set_xticklabels(top_countries_df['Country'], rotation=45, ha='right')
-ax1.grid(axis='y', linestyle='--', alpha=0.7)
-
-# Set labels for the secondary y-axes
-ax2.set_ylabel('Total Revenue', color='orange')
-ax3.set_ylabel('Total Customers', color='green')
-
-# Add custom legends
-ax1.legend(handles=[bars[0]], title='Total Orders', loc='upper left')
-ax2.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), title='Metrics')
-ax3.legend(loc='upper right')
-
-# Adjust layout to make space for the legends
-plt.tight_layout()
-plt.show()
 
 """## 7. Quaterly, Monthly and weekly Trends of Purchasing Behavior"""
 
@@ -585,86 +342,36 @@ weekly_spending_df = transactions_df.groupBy("Day_Of_Week").agg(
 
 # Convert to Pandas DataFrame for plotting
 weekly_spending_pd_df = weekly_spending_df.toPandas()
-
-# Create subplots for side-by-side visualization
-fig, axs = plt.subplots(1, 3, figsize=(24, 7))
-
-# Plot monthly spending trends
-axs[0].plot(
-    monthly_spending_pd_df['Date'],
-    monthly_spending_pd_df['Total_Spending'],
-    marker='^',  # Filled triangle marker
-    linestyle='-',
-    color='blue',
-    linewidth=2
+logger.info("Quaterly, Monthly and weekly Trends of Purchasing Behavior")
+plot_trend(
+    quarterly_spending_pd_df,
+    x_col='Date',
+    y_col='Total_Spending',
+    x_ticks=quarterly_spending_pd_df['Date'],
+    x_labels=[f'Q{q}' for q in quarterly_spending_pd_df['Quarter']],
+    title='Quarterly Spending Trends',
+    xlabel='Quarter',
+    ylabel='Total Spending'
 )
-axs[0].set_title('Monthly Spending Trends')
-axs[0].set_xlabel('Month')
-axs[0].set_ylabel('Total Spending')
-axs[0].grid(True)
-axs[0].set_xticks(monthly_spending_pd_df['Date'])
-axs[0].set_xticklabels(monthly_spending_pd_df['Month_Name'], rotation=45, ha='right')
 
-# Add labels on top of dots for monthly spending
-for i in range(len(monthly_spending_pd_df)):
-    axs[0].text(
-        monthly_spending_pd_df['Date'].iloc[i],
-        monthly_spending_pd_df['Total_Spending'].iloc[i],
-        f'{monthly_spending_pd_df["Total_Spending"].iloc[i]:.2f}',
-        ha='center',
-        va='bottom'
-    )
-
-# Plot quarterly spending trends
-axs[1].plot(
-    quarterly_spending_pd_df['Date'],
-    quarterly_spending_pd_df['Total_Spending'],
-    marker='^',  # Filled triangle marker
-    linestyle='-',
-    color='blue',
-    linewidth=2
+plot_trend(
+    monthly_spending_pd_df,
+    x_col='Date',
+    y_col='Total_Spending',
+    x_ticks=monthly_spending_pd_df['Date'],
+    x_labels=monthly_spending_pd_df['Month_Name'],
+    title='Monthly Spending Trends',
+    xlabel='Month',
+    ylabel='Total Spending'
 )
-axs[1].set_title('Quarterly Spending Trends')
-axs[1].set_xlabel('Quarter')
-axs[1].set_ylabel('Total Spending')
-axs[1].grid(True)
-axs[1].set_xticks(quarterly_spending_pd_df['Date'])
-axs[1].set_xticklabels([f'Q{q}' for q in quarterly_spending_pd_df['Quarter']], rotation=45, ha='right')
 
-# Add labels on top of dots for quarterly spending
-for i in range(len(quarterly_spending_pd_df)):
-    axs[1].text(
-        quarterly_spending_pd_df['Date'].iloc[i],
-        quarterly_spending_pd_df['Total_Spending'].iloc[i],
-        f'{quarterly_spending_pd_df["Total_Spending"].iloc[i]:.2f}',
-        ha='center',
-        va='bottom'
-    )
-
-# Plot weekly spending trends by day of the week
-axs[2].plot(
-    weekly_spending_pd_df['Day_Of_Week'],
-    weekly_spending_pd_df['Total_Spending'],
-    marker='^',  # Filled triangle marker
-    linestyle='-',
-    color='blue',
-    linewidth=2
+plot_trend(
+    weekly_spending_pd_df,
+    x_col='Day_Of_Week',
+    y_col='Total_Spending',
+    title='Weekly Spending Trends by Day of the Week',
+    xlabel='Day of the Week',
+    ylabel='Total Spending',
+    x_ticks=None,  # No specific ticks needed for day of the week
+    x_labels=None  # Default labels are fine
 )
-axs[2].set_title('Weekly Spending Trends by Day of the Week')
-axs[2].set_xlabel('Day of the Week')
-axs[2].set_ylabel('Total Spending')
-axs[2].grid(True)
-
-# Add labels on top of dots for weekly spending
-for i in range(len(weekly_spending_pd_df)):
-    axs[2].text(
-        weekly_spending_pd_df['Day_Of_Week'].iloc[i],
-        weekly_spending_pd_df['Total_Spending'].iloc[i],
-        f'{weekly_spending_pd_df["Total_Spending"].iloc[i]:.2f}',
-        ha='center',
-        va='bottom'
-    )
-
-# Adjust layout to make space for labels and titles
-plt.tight_layout()
-plt.show()

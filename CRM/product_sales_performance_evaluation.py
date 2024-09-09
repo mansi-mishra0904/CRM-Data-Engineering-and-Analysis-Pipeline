@@ -7,12 +7,13 @@ Original file is located at
     https://colab.research.google.com/drive/1tNldKnxxSRKWSSumKVCBSLVOwfVgMEOi
 """
 
-from pyspark.sql import functions as F
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import sum as _sum, avg, count, round
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import os
+import logging
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
 from matplotlib.cm import get_cmap
@@ -31,8 +32,20 @@ warnings.filterwarnings('ignore')
 - A detailed analysis of sales performance, identifying top-selling products and categories.
 - An assessment of how pricing affects sales volume.
 
-# Initialized Spark Session and Loaded Data into Spark Dataframe
 """
+
+# Commented out IPython magic to ensure Python compatibility.
+# %run utility/common_utility.ipynb
+# %run Utilities/bar_plot_with_line.ipynb
+
+"""# Logs Configuration"""
+
+log_file_path = 'logs/product_sales_performance_evaluation.log'
+logger = initialize_logger(log_file_path)
+
+logger.info("Logger initialized with dynamic path!")
+
+"""# Initialized Spark Session and Loaded Data into Spark Dataframe"""
 
 # Initialize Spark session
 spark = SparkSession.builder \
@@ -46,6 +59,7 @@ products_df = spark.read.csv("Cleaned_data/cleaned_products.csv", header=True, i
 
 """# Total Revenue and Sales Volume of Each Product"""
 
+logger.info("Total Revenue and Sales Volume of Each Product")
 # Join the transactions DataFrame with the products DataFrame on Product_ID
 merged_df = transactions_df.join(products_df, on='Product_ID')
 
@@ -56,7 +70,7 @@ product_sales_df = merged_df.groupBy("Product_ID", "Product_Name", "Category", "
 )
 
 # Show the results
-product_sales_df.show(50,truncate=False)
+product_sales_df.show(5,truncate=False)
 
 """# 1. Total Revenue of Each Product by Category"""
 
@@ -68,39 +82,15 @@ product_sales_df = product_sales_df.sort_values(by=['Category', 'Total_Revenue']
 # Add category information to product names for y-axis labels
 product_sales_df['Product_Label'] = product_sales_df['Product_Name'] + ' (' + product_sales_df['Category'] + ')'
 
-# Set up the plotting space
-fig, ax = plt.subplots(figsize=(12, 10))
-
 # Get unique categories for color coding
 categories = product_sales_df['Category'].unique()
 
-# Define a colormap for shades of blue
-cmap = get_cmap('Blues')
+# Sort and add the product label (if not already done)
+product_sales_df['Product_Label'] = product_sales_df['Product_Name'] + ' (' + product_sales_df['Category'] + ')'
 
-# Generate colors for each category
-palette = [cmap(i / len(categories)) for i in range(len(categories))][::-1]
-
-# Plot each category
-for i, category in enumerate(categories):
-    category_data = product_sales_df[product_sales_df['Category'] == category]
-    bars = ax.barh(category_data['Product_Label'], category_data['Total_Revenue'],
-                   label=category, color=palette[i], edgecolor='black')
-
-    # Add exact revenue labels on the bars
-    for bar in bars:
-        width = bar.get_width()
-        ax.text(width, bar.get_y() + bar.get_height()/2, f' {width:.2f}',
-                va='center', ha='left', fontsize=10, color='black')
-
-# Set labels and title
-ax.set_xlabel('Total Revenue')
-ax.set_title('Total Revenue of Each Product by Category')
-ax.legend(title='Category', bbox_to_anchor=(1.05, 1), loc='upper left')
-
-# Adjust layout
-plt.tight_layout()
-
-plt.show()
+logger.info('Total Revenue of Each Product by Category')
+# Call the plot function
+plot_horizontal_barh(product_sales_df, 'Category', 'Product_Label', 'Total_Revenue', 'Total Revenue by Product and Category')
 
 """# 2. Sales Volume of Each Product by Category"""
 
@@ -112,39 +102,18 @@ product_sales_df = product_sales_df.sort_values(by=['Category', 'Sales_Volume'],
 # Add category information to product names for y-axis labels
 product_sales_df['Product_Label'] = product_sales_df['Product_Name'] + ' (' + product_sales_df['Category'] + ')'
 
-# Set up the plotting space
-fig, ax = plt.subplots(figsize=(12, 10))
-
 # Get unique categories for color coding
 categories = product_sales_df['Category'].unique()
+# Call the reusable plot function to visualize sales volume by product and category
+logger.info("Sales Volume of Each Product by Category")
 
-# Define a colormap for shades of blue
-cmap = get_cmap('Blues')
-
-# Generate colors for each category
-palette = [cmap(i / len(categories)) for i in range(len(categories))][::-1]
-
-# Plot each category
-for i, category in enumerate(categories):
-    category_data = product_sales_df[product_sales_df['Category'] == category]
-    bars = ax.barh(category_data['Product_Label'], category_data['Sales_Volume'],
-                   label=category, color=palette[i], edgecolor='black')
-
-    # Add exact sales volume labels on the bars
-    for bar in bars:
-        width = bar.get_width()
-        ax.text(width, bar.get_y() + bar.get_height()/2, f'{width}',
-                va='center', ha='left', fontsize=10, color='black')
-
-# Set labels and title
-ax.set_xlabel('Sales Volume')
-ax.set_title('Sales Volume of Each Product by Category')
-ax.legend(title='Category', bbox_to_anchor=(1.05, 1), loc='upper left')
-
-# Adjust layout
-plt.tight_layout()
-
-plt.show()
+plot_horizontal_barh(
+    df=product_sales_df,
+    category_col='Category',
+    label_col='Product_Label',
+    value_col='Sales_Volume',
+    title='Sales Volume of Each Product by Category'
+)
 
 """# 3. Total Sales Volume by Product Category"""
 
@@ -162,121 +131,38 @@ category_purchases.rename(columns={'Transaction_ID': 'Purchase_Count'}, inplace=
 top_products = product_purchases.sort_values(by='Purchase_Count', ascending=False)
 top_categories = category_purchases.sort_values(by='Purchase_Count', ascending=False)
 
-# Define a colormap for shades of blue
-cmap = get_cmap('Blues')
-categories = top_categories['Category'].unique()
-
-# Generate colors based on the unique values
-category_colors = cmap(np.linspace(0, 1, len(categories)))[::-1]
-
-# Map the colors to the DataFrame based on category
-category_color_dict = dict(zip(categories, category_colors))
-top_categories['Color'] = top_categories['Category'].map(category_color_dict)
-
-# Set up the figure and axes
-fig, ax2 = plt.subplots(figsize=(12, 6))
-
-# Bar plot for number of purchases by category
-bars2 = ax2.barh(top_categories['Category'], top_categories['Purchase_Count'], color=top_categories['Color'], edgecolor='black')
-ax2.set_title('Total sales volume by product category', fontsize=16, fontweight='bold')
-ax2.set_xlabel('Number of Purchases', fontsize=14)
-ax2.set_ylabel('Category', fontsize=14)
-ax2.grid(axis='x', linestyle='--', alpha=0.7)
-
-# Add labels on the bars
-for bar in bars2:
-    xval = bar.get_width()
-    ax2.text(
-        xval + 0.01 * max(top_categories['Purchase_Count']),
-        bar.get_y() + bar.get_height() / 2,
-        f'{xval:.0f}',
-        va='center',
-        ha='left',
-        fontsize=10
-    )
-
-# Adjust layout
-plt.tight_layout()
-plt.show()
+logger.info("Total Sales Volume by Product Category")
+plot_horizontal_barh(
+    df=top_categories,
+    category_col='Category',
+    label_col='Category',
+    value_col='Purchase_Count',
+    title='Total Sales Volume by Product Category'
+)
 
 """## 4. Top 20 Products by Total Revenue"""
 
 # Sort by Total_Revenue to get the top 10 products
 top_products_revenue = product_sales_df.sort_values(by='Total_Revenue', ascending=False).head(20)
-
-# Define a colormap for shades of blue
-cmap = get_cmap('Blues')
-# Generate colors for the top 10 products
-colors = cmap(np.linspace(0, 1, len(top_products_revenue)))[::-1]
-
-# Set up the figure and axis
-fig, ax = plt.subplots(figsize=(12, 6))
-
-# Bar plot for top 10 products by total revenue
-bars = ax.bar(top_products_revenue['Product_Name'], top_products_revenue['Total_Revenue'], color=colors, edgecolor='black')
-ax.set_title('Top 20 Products by Total Revenue', fontsize=16, fontweight='bold')
-ax.set_xlabel('Product Name', fontsize=14)
-ax.set_ylabel('Total Revenue', fontsize=14)
-ax.grid(axis='y', linestyle='--', alpha=0.7)
-
-# Add labels on the bars
-for bar in bars:
-    height = bar.get_height()
-    ax.text(
-        bar.get_x() + bar.get_width() / 2,
-        height + 0.01 * max(top_products_revenue['Total_Revenue']),
-        f'{height:,.2f}',
-        ha='center',
-        va='bottom',
-        fontsize=10,
-        rotation=45
-    )
-
-# Rotate x-axis labels for better readability
-plt.xticks(rotation=45, ha='right')
-
-# Adjust layout
-plt.tight_layout()
-plt.show()
+logger.info('Top 20 Products by Total Revenue')
+plot_vertical_bar(
+    df=top_products_revenue,
+    label_col='Product_Name',
+    value_col='Total_Revenue',
+    title='Top 20 Products by Total Revenue'
+)
 
 """## 5. Top 20 Products by Sales Volume"""
 
 # Sort by Sales_Volume to get the top 10 products
 top_products = product_sales_df.sort_values(by='Sales_Volume', ascending=False).head(20)
-
-# Define a colormap for shades of blue
-cmap = get_cmap('Blues')
-# Generate colors for the top 10 products
-colors = cmap(np.linspace(0, 1, len(top_products)))[::-1]
-
-# Set up the figure and axis
-fig, ax = plt.subplots(figsize=(12, 6))
-
-# Bar plot for top 10 products by sales volume
-bars = ax.bar(top_products['Product_Name'], top_products['Sales_Volume'], color=colors, edgecolor='black')
-ax.set_title('Top 20 Products by Sales Volume', fontsize=16, fontweight='bold')
-ax.set_xlabel('Product Name', fontsize=14)
-ax.set_ylabel('Sales Volume', fontsize=14)
-ax.grid(axis='y', linestyle='--', alpha=0.7)
-
-# Add labels on the bars
-for bar in bars:
-    height = bar.get_height()
-    ax.text(
-        bar.get_x() + bar.get_width() / 2,
-        height + 0.01 * max(top_products['Sales_Volume']),
-        f'{height:.0f}',
-        ha='center',
-        va='bottom',
-        fontsize=10
-    )
-
-# Rotate x-axis labels for better readability
-plt.xticks(rotation=45, ha='right')
-
-# Adjust layout
-plt.tight_layout()
-plt.show()
+logger.info("Top 20 Products by Sales Volume")
+plot_vertical_bar(
+    df=top_products,
+    label_col='Product_Name',
+    value_col='Total_Revenue',
+    title='Top 20 Products by Sales Volume'
+)
 
 """## 6. Effect of Pricing on Sales Volume by Category"""
 
@@ -354,6 +240,6 @@ ax2.set_title('Total Revenue Contribution by Product Category', fontsize=16, fon
 
 # Adjust layout to prevent overlap
 plt.tight_layout()
-
+logger.info("Total Revenue Contribution by Product Category")
 # Display the combined figure
 plt.show()
