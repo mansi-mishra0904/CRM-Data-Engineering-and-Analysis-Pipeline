@@ -3,41 +3,10 @@ import logging
 import os
 from common_utility import *
 
-class CustomFormatter(logging.Formatter):
-    # ANSI escape codes for colors
-    GREEN = "\033[92m"
-    RESET = "\033[0m"
+spark = initialize_spark_session("Products Cleaning")
 
-    def format(self, record):
-        # Add green color to INFO level messages
-        if record.levelno == logging.INFO:
-            record.msg = f"{self.GREEN}{record.msg}{self.RESET}"
-        return super().format(record)
-
-# Ensure the logs directory exists
-os.makedirs('logs', exist_ok=True)
-
-# Initialize the logger
-logger = logging.getLogger('DataCleaningLogger')
-logger.setLevel(logging.INFO)
-
-# Remove all existing handlers
-for handler in logger.handlers[:]:
-    logger.removeHandler(handler)
-
-# Create a stream handler
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-ch.setFormatter(CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-
-# Create a file handler
-fh = logging.FileHandler('logs/products_data_cleaning.log')
-fh.setLevel(logging.INFO)
-fh.setFormatter(CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-
-# Add handlers to the logger
-logger.addHandler(ch)
-logger.addHandler(fh)
+log_file_path = 'logs/products_cleaning.log'
+logger = initialize_logger(log_file_path)
 
 # Step 1: Load data from CSV files into DataFrames using PySpark
 logger.info("Step 1: Loading data from CSV files into DataFrames...")
