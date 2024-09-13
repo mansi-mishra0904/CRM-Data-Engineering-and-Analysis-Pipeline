@@ -2,18 +2,14 @@ from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import col, sum, lit, regexp_replace, initcap, when, mean, date_format, avg, concat,max as spark_max, current_date,udf,regexp_extract
 import logging
 import re
-from email_validator import validate_email, EmailNotValidError
 from pyspark.sql.types import StringType
 import os
 import warnings
+import pandas as pd
 warnings.filterwarnings('ignore')
 
 # Step 1: Initialize Spark Session
 spark = SparkSession.builder.appName("CRM_Data_Validation").getOrCreate()
-
-import logging
-import os
-
 class CustomFormatter(logging.Formatter):
     # ANSI escape codes for colors
     GREEN = "\033[92m"
@@ -46,7 +42,7 @@ def initialize_logger(log_path):
     fh = logging.FileHandler(log_path)
     fh.setLevel(logging.INFO)
     fh.setFormatter(CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-
+    
     # Prevent logging from propagating to the root logger
     logger.propagate = False
 
@@ -56,10 +52,35 @@ def initialize_logger(log_path):
 
     return logger
 
-# Example usage
-log_file_path = 'logs/customers_data_cleaning.log'
-logger = initialize_logger(log_file_path)
 
+
+def initialize_spark_session(app_name: str) -> SparkSession:
+    """
+    Initialize and return a Spark session.
+    """
+    return SparkSession.builder.appName(app_name).getOrCreate()
+
+def load_data_files(file: str) -> DataFrame:
+    """
+    Load CSV files into Spark DataFrames.
+    """
+    return spark.read.csv(file, header=True, inferSchema=True)
+
+def display_dataframes(df) -> None:
+    """
+    Display the first 5 records for each DataFrame.
+    """
+    if isinstance(df, DataFrame):
+        # Spark DataFrame
+        df.show(5, truncate=False)
+        logger.info("Displayed first 5 records of Spark DataFrame.")
+    elif isinstance(df, pd.DataFrame):
+        # Pandas DataFrame
+        print(df.head(5))
+        logger.info("Displayed first 5 records of Pandas DataFrame.")
+    else:
+        logger.error("Provided object is neither a Spark DataFrame nor a Pandas DataFrame.")
+        raise TypeError("The provided object is not a DataFrame.")
 def count_duplicates_per_column(df):
     """
     count_duplicates_per_column function counts the number of duplicate values for each column in the DataFrame
@@ -80,7 +101,7 @@ def count_duplicates_per_column(df):
     Count duplicates in the customers_df DataFrame
     duplicate_counts_df = count_duplicates_per_column(customers_df)
     duplicate_counts_df.show()
-
+    
     Output:
     ----------
     +-------------+-----------------+
@@ -121,7 +142,7 @@ def get_duplicate_data_per_column(df):
     for column, duplicates in duplicate_data.items():
         logger.info(f"Duplicate data based on column: {column}")
         duplicates.show(truncate=False)
-
+    
     Output:
     ----------
     Duplicate data based on column: Customer_ID
@@ -133,14 +154,14 @@ def get_duplicate_data_per_column(df):
     +-----------+-----------+---------------------+
     """
     duplicate_data = {}
-
+    
     for column in df.columns:
         # Find duplicate rows based on the specific column
         duplicate_rows = df.groupBy(col(column)).count().filter(col("count") > 1)
-
+        
         # Join the duplicate rows with the original DataFrame to get full duplicate data
         duplicates = df.join(duplicate_rows, on=column, how='inner')
-
+        
         # Store the duplicates in the dictionary
         duplicate_data[column] = duplicates
 
@@ -148,7 +169,7 @@ def get_duplicate_data_per_column(df):
     for column, duplicates in duplicate_data.items():
         logger.info(f"Duplicate data based on column: {column}")
         duplicates.show(5,truncate=False)
-
+     
 
 
 def drop_duplicates(df: DataFrame, key_column: str) -> DataFrame:
@@ -168,7 +189,7 @@ def drop_duplicates(df: DataFrame, key_column: str) -> DataFrame:
     DataFrame
         The cleaned DataFrame with duplicates removed, if any were found.
 
-
+        
     Sample Input:
     ----------
     Input DataFrame:
@@ -237,7 +258,7 @@ def validate_emails(df: DataFrame, email_column: str = "Email") -> DataFrame:
             return email  # Invalid email
 
     validate_email_udf = udf(validate_email_safely, StringType())
-
+    
     # Apply the UDF to filter invalid emails
     non_null_emails_df = df.filter(col(email_column).isNotNull())
     invalid_emails_df = non_null_emails_df.withColumn('Invalid_Email', validate_email_udf(col(email_column)))
@@ -268,7 +289,7 @@ def capitalize_columns(df: DataFrame, columns: list) -> DataFrame:
     DataFrame
         The DataFrame with the specified columns capitalized.
 
-
+      
     Sample Input:
     ----------
     Input DataFrame:
@@ -278,7 +299,7 @@ def capitalize_columns(df: DataFrame, columns: list) -> DataFrame:
     |  1| john doe   | new york    |
     |  2| mike brown | chicago     |
     +---+------------+-------------+
-
+ 
     columns: ['Name', 'City']
 
     Sample Output:
@@ -330,7 +351,7 @@ def count_missing_values(df: DataFrame) -> DataFrame:
     +---+----+---+
     |  0|   2|  2|
     +---+----+---+
-
+    
     """
     missing_values_df = df.select([sum(col(c).isNull().cast("int")).alias(c) for c in df.columns])
     return missing_values_df
@@ -344,7 +365,7 @@ def fill_missing_values(df: DataFrame, fill_values: dict) -> DataFrame:
     df : DataFrame
         The input DataFrame in which missing values need to be filled.
     fill_values : dict
-        A dictionary where keys are column names and values are the default values
+        A dictionary where keys are column names and values are the default values 
         to fill in for missing data in those columns.
 
     Returns:
@@ -384,7 +405,7 @@ def fill_missing_values(df: DataFrame, fill_values: dict) -> DataFrame:
 def process_phone_numbers(customers_df, country_codes_path):
     """
     Processes customer phone numbers by cleaning and formatting them, and appends the appropriate country code.
-
+    
     Parameters:
     - customers_df: Spark DataFrame containing customer data with columns including 'Phone' and 'Country'.
     - country_codes_path: Path to the CSV file containing country codes with columns 'Country' and 'Country_Code'.
@@ -392,7 +413,7 @@ def process_phone_numbers(customers_df, country_codes_path):
     Returns:
     - Spark DataFrame with cleaned phone numbers and appended country codes.
 
-
+     
     Sample Input:
     ----------
     customers_df:
@@ -459,17 +480,17 @@ def process_phone_numbers(customers_df, country_codes_path):
 
     # Select the final columns to include in the output DataFrame
     final_df = final_df.select(
-        "Customer_ID",
-        "Name",
-        "Email",
-        "Phone",
+        "Customer_ID", 
+        "Name", 
+        "Email", 
+        "Phone", 
         "Country"
     )
 
     # Return the final DataFrame with the cleaned and formatted phone numbers
     return final_df
-
-
+    
+   
 
 def date_validation(df: DataFrame,  column: str) -> DataFrame:
     """
@@ -507,7 +528,7 @@ def date_validation(df: DataFrame,  column: str) -> DataFrame:
     +---+----------+
 
     """
-
+    
     # Step 1: Identify rows where 'Interaction_Date' is in the future
     logger.info("Step 1: Identifying future dates in 'Interaction_Date'...")
     future_dates_df = df.filter(col(column) > current_date())
@@ -515,7 +536,7 @@ def date_validation(df: DataFrame,  column: str) -> DataFrame:
     # Check if there are any future dates
     if future_dates_df.count() > 0:
         logger.info(f"Found {future_dates_df.count()} records with future dates.")
-
+        
         # Step 2: Determine the most recent valid date in the dataset
         most_recent_past_date = df.filter(col(column) <= current_date()) \
                                   .agg(spark_max(column)) \
@@ -530,7 +551,7 @@ def date_validation(df: DataFrame,  column: str) -> DataFrame:
             when(col(column) > current_date(), most_recent_past_date)
             .otherwise(col(column))
         )
-
+        
         logger.info("Future dates have been corrected.")
     else:
         logger.info("No future dates found.")
@@ -575,13 +596,13 @@ def validate_boolean_values(df: DataFrame, column: str) -> DataFrame:
 
     # Step 1: Identify non-boolean values in 'Issue_Resolved'
     logger.info("Step 1: Identifying non-boolean values.. ")
-
+    
     # Assuming the column should contain only True or False values
     invalid_values_df = df.filter(~col(column).isin(True, False))
 
     if invalid_values_df.count() > 0:
         logger.info(f"Found {invalid_values_df.count()} records with non-boolean values in 'Issue_Resolved'.")
-
+        
         # Step 2: Correct non-boolean values to False
         logger.info("Step 2: Correcting non-boolean values to False...")
         df = df.withColumn(
@@ -589,7 +610,7 @@ def validate_boolean_values(df: DataFrame, column: str) -> DataFrame:
             when(col(column).isin(True, False), col(column))
             .otherwise(lit(False))
         )
-
+        
         logger.info("Non-boolean values have been corrected to False.")
     else:
         logger.info("All values in 'Issue_Resolved' are valid booleans.")

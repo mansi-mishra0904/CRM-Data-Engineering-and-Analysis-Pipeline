@@ -4,7 +4,7 @@ import pandas as pd
 def plot_world_map(df, locations_col, color_col, plot_title, hover_data=None, is_discrete=True, color_scale=None, color_discrete_sequence=None):
     """
     A function to plot a world map with customizable settings for both discrete and continuous color scales.
-
+    
     Parameters:
         df (pd.DataFrame): The data to plot.
         locations_col (str): The column in df that contains country names.
@@ -14,18 +14,18 @@ def plot_world_map(df, locations_col, color_col, plot_title, hover_data=None, is
         is_discrete (bool, optional): Whether the color scale is discrete (True) or continuous (False). Defaults to True.
         color_scale (list, optional): Continuous color scale if using continuous values. Defaults to None.
         color_discrete_sequence (list, optional): Discrete color sequence if using categorical values. Defaults to None.
-
+    
     Returns:
         fig: The generated plotly figure.
     """
-
+    
     if is_discrete:
         fig = px.choropleth(df,
                             locations=locations_col,
                             locationmode="country names",
                             color=color_col,
                             title=plot_title,
-                            color_discrete_sequence=color_discrete_sequence if color_discrete_sequence else px.colors.sequential.Blues_r,
+                            color_discrete_sequence=color_discrete_sequence if color_discrete_sequence else px.colors.sequential.Greens_r,
                             hover_data=hover_data
                            )
     else:
@@ -34,10 +34,10 @@ def plot_world_map(df, locations_col, color_col, plot_title, hover_data=None, is
                             locationmode="country names",
                             color=color_col,
                             title=plot_title,
-                            color_continuous_scale=color_scale if color_scale else px.colors.sequential.Blues,
+                            color_continuous_scale=color_scale if color_scale else px.colors.sequential.Greens,
                             hover_data=hover_data
                            )
-
+    
     # Update layout for better visualization
     fig.update_layout(
         geo=dict(
@@ -59,5 +59,5 @@ def plot_world_map(df, locations_col, color_col, plot_title, hover_data=None, is
         width=1000,  # Set width for larger plot
         height=700   # Set height for larger plot
     )
-
+    
     return fig

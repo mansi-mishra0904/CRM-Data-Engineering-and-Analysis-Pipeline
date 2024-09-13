@@ -6,7 +6,7 @@ from pyspark.sql import functions as F
 import seaborn as sns
 from pyspark.sql import DataFrame
 
-def plot_dual_axis_bar_line(data_pd, x_labels, bar_col, line_col, bar_label, line_label, title, x_title, bar_y_title, line_y_title, cmap='Blues', line_color='orange', figsize=(14, 6), rotation=45):
+def plot_dual_axis_bar_line(data_pd, x_labels, bar_col, line_col, bar_label, line_label, title, x_title, bar_y_title, line_y_title, cmap='Greens', line_color='orange', figsize=(14, 6), rotation=45):
     """
     A reusable function to create a dual-axis plot with bars and a line plot.
 
@@ -21,7 +21,7 @@ def plot_dual_axis_bar_line(data_pd, x_labels, bar_col, line_col, bar_label, lin
         x_title (str): Label for the x-axis.
         bar_y_title (str): Label for the y-axis of the bar plot.
         line_y_title (str): Label for the y-axis of the line plot.
-        cmap (str): Colormap for bar plot (default is 'Blues').
+        cmap (str): Colormap for bar plot (default is 'Greens').
         line_color (str): Color for the line plot (default is 'orange').
         figsize (tuple): Size of the figure (default is (14, 6)).
         rotation (int): Rotation for x-axis labels (default is 45).
@@ -72,7 +72,7 @@ def plot_dual_axis_bar_line(data_pd, x_labels, bar_col, line_col, bar_label, lin
         markersize=8,
         label=line_label
     )
-
+    
     # Set axis titles
     ax1.set_xlabel(x_title, fontsize=14)
     ax1.set_ylabel(bar_y_title, color='blue', fontsize=14)
@@ -98,7 +98,7 @@ def plot_dual_axis_bar_line(data_pd, x_labels, bar_col, line_col, bar_label, lin
         title_fontsize=12
     )
     ax2.legend(loc='upper right')
-
+    
 
     # Adjust layout to prevent overlap
     plt.tight_layout()
@@ -106,10 +106,10 @@ def plot_dual_axis_bar_line(data_pd, x_labels, bar_col, line_col, bar_label, lin
     # Show the plot
     plt.show()
 
-def plot_triple_axis_bar_line(data_pd, x_labels, bar_col, line1_col, line2_col,
-                              bar_label, line1_label, line2_label,
-                              title, x_title, bar_y_title, line1_y_title, line2_y_title,
-                              cmap='Blues', line1_color='orange', line2_color='green',
+def plot_triple_axis_bar_line(data_pd, x_labels, bar_col, line1_col, line2_col, 
+                              bar_label, line1_label, line2_label, 
+                              title, x_title, bar_y_title, line1_y_title, line2_y_title, 
+                              cmap='Greens', line1_color='orange', line2_color='green', 
                               figsize=(14, 6), rotation=45):
     """
     Extended reusable function to create a triple-axis plot with bars and two line plots.
@@ -128,7 +128,7 @@ def plot_triple_axis_bar_line(data_pd, x_labels, bar_col, line1_col, line2_col,
         bar_y_title (str): Label for the y-axis of the bar plot.
         line1_y_title (str): Label for the first y-axis of the line plot.
         line2_y_title (str): Label for the second y-axis of the line plot.
-        cmap (str): Colormap for bar plot (default is 'Blues').
+        cmap (str): Colormap for bar plot (default is 'Greens').
         line1_color (str): Color for the first line plot.
         line2_color (str): Color for the second line plot.
         figsize (tuple): Size of the figure (default is (14, 6)).
@@ -180,11 +180,11 @@ def plot_triple_axis_bar_line(data_pd, x_labels, bar_col, line1_col, line2_col,
         markersize=8,
         label=line1_label
     )
-
+    
     # Create third axis for the second line plot
     ax3 = ax1.twinx()
     ax3.spines["right"].set_position(("outward", 60))  # Adjust position to avoid overlap
-
+    
     # Line plot for line2_col values
     lines2 = ax3.plot(
         x,
@@ -217,7 +217,7 @@ def plot_triple_axis_bar_line(data_pd, x_labels, bar_col, line1_col, line2_col,
     bar_patch = patches.Patch(color=colors[0], label=bar_label)
     line1_patch = patches.Patch(color=line1_color, label=line1_label)
     line2_patch = patches.Patch(color=line2_color, label=line2_label)
-
+    
     ax1.legend(handles=[bar_patch], loc='upper left', title='Customer Count', fontsize=10)
     ax2.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), title='Total Spending', fontsize=10)
     ax3.legend(loc='upper right', title='Avg Transaction Amount', fontsize=10)
@@ -227,8 +227,7 @@ def plot_triple_axis_bar_line(data_pd, x_labels, bar_col, line1_col, line2_col,
 
     # Show the plot
     plt.show()
-
-def plot_trend(df, x_col, y_col, x_ticks=None, x_labels=None, title='', xlabel='', ylabel='', marker='^', linestyle='-', color='blue', figsize=(10, 4)):
+def plot_trend(df, x_col, y_col, x_ticks=None, x_labels=None, title='', xlabel='', ylabel='', marker='^', linestyle='-', color='green', figsize=(10, 4)):
     """
     Plots a trend line for a given DataFrame and customization parameters.
 
@@ -247,12 +246,12 @@ def plot_trend(df, x_col, y_col, x_ticks=None, x_labels=None, title='', xlabel='
         figsize (tuple): Size of the figure. Default is (12, 6).
     """
     plt.figure(figsize=figsize)
-
+    
     plt.plot(
         df[x_col],
         df[y_col],
-        marker=marker,
-        linestyle=linestyle,
+        marker=marker,  
+        linestyle=linestyle, 
         color=color,
         linewidth=2
     )
@@ -260,22 +259,23 @@ def plot_trend(df, x_col, y_col, x_ticks=None, x_labels=None, title='', xlabel='
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.grid(True)
-
+    
     if x_ticks is not None:
         plt.xticks(x_ticks, x_labels, rotation=45, ha='right')
-
+    
     # Add labels on top of dots
     for i in range(len(df)):
         plt.text(
-            df[x_col].iloc[i],
-            df[y_col].iloc[i],
-            f'{df[y_col].iloc[i]:.2f}',
-            ha='center',
+            df[x_col].iloc[i], 
+            df[y_col].iloc[i], 
+            f'{df[y_col].iloc[i]:.2f}', 
+            ha='center', 
             va='bottom'
         )
-
+    
     plt.tight_layout()
     plt.show()
+
 
 def customer_segmentation_by_spending_behavior(transactions_df: DataFrame, customers_df: DataFrame):
     """
@@ -284,7 +284,7 @@ def customer_segmentation_by_spending_behavior(transactions_df: DataFrame, custo
     Parameters:
         transactions_df (DataFrame): Spark DataFrame containing transactions data.
         customers_df (DataFrame): Spark DataFrame containing customer details.
-
+    
     Steps:
         1. Join transactions with customers to get detailed information.
         2. Aggregate data to calculate total spending and average transaction amount per customer.
@@ -341,10 +341,10 @@ def customer_segmentation_by_spending_behavior(transactions_df: DataFrame, custo
         .agg(F.sum("Customer_Count_By_Country").alias("Total_Customers")) \
         .toPandas()
 
-
+   
 
     # Step 7: Define a colormap for the clusters
-    cmap = get_cmap('Blues')
+    cmap = get_cmap('Greens')
     num_clusters = len(customer_count_by_cluster)
     colors = cmap(np.linspace(0.5, 1, num_clusters))  # Create different shades
 
@@ -354,9 +354,9 @@ def customer_segmentation_by_spending_behavior(transactions_df: DataFrame, custo
     # Step 8: Plot the clusters using a scatter plot
     plt.figure(figsize=(10, 6))
     sns.scatterplot(
-        x='Total_Spending_By_Country',
-        y='Avg_Transaction_Amount_By_Country',
-        hue='Cluster_Name',
+        x='Total_Spending_By_Country', 
+        y='Avg_Transaction_Amount_By_Country', 
+        hue='Cluster_Name', 
         palette=color_dict,  # Use colormap for clusters
         data=country_clustered_df.toPandas(),
         s=100
@@ -370,6 +370,8 @@ def customer_segmentation_by_spending_behavior(transactions_df: DataFrame, custo
 
     # Show the plot
     plt.show()
+
+
 
 def plot_horizontal_barh(df, category_col, label_col, value_col, title='Total Revenue by Category'):
     """
@@ -392,7 +394,7 @@ def plot_horizontal_barh(df, category_col, label_col, value_col, title='Total Re
     categories = df[category_col].unique()
 
     # Define a colormap for shades of blue
-    cmap = get_cmap('Blues')
+    cmap = get_cmap('Greens')
 
     # Generate colors for each category
     palette = [cmap(i / len(categories)) for i in range(len(categories))][::-1]
@@ -400,13 +402,13 @@ def plot_horizontal_barh(df, category_col, label_col, value_col, title='Total Re
     # Plot each category
     for i, category in enumerate(categories):
         category_data = df[df[category_col] == category]
-        bars = ax.barh(category_data[label_col], category_data[value_col],
+        bars = ax.barh(category_data[label_col], category_data[value_col], 
                        label=category, color=palette[i], edgecolor='black')
 
         # Add exact value labels on the bars
         for bar in bars:
             width = bar.get_width()
-            ax.text(width, bar.get_y() + bar.get_height()/2, f'{width:.2f}',
+            ax.text(width, bar.get_y() + bar.get_height()/2, f'{width:.2f}', 
                     va='center', ha='left', fontsize=10, color='black')
 
     # Set labels and title
@@ -432,11 +434,11 @@ def plot_vertical_bar(df, label_col, value_col, title='Top Products by Total Rev
     df = df.sort_values(by=value_col, ascending=False)
 
     # Define a colormap for shades of blue
-    cmap = get_cmap('Blues')
+    cmap = get_cmap('Greens')
 
     # Generate colors for each bar
     colors = cmap(np.linspace(0, 1, len(df)))[::-1]
-
+    
     # Set up the figure and axes
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -469,10 +471,10 @@ def plot_vertical_bar(df, label_col, value_col, title='Top Products by Total Rev
     plt.tight_layout()
     plt.show()
 
-def plot_performers_bar_chart(df, title, xlabel, ylabel, cmap='Blues', color_inversion=False):
+def plot_performers_bar_chart(df, title, xlabel, ylabel, cmap='Greens', color_inversion=False):
     """
     Function to plot bar chart for sales team performance.
-
+    
     Parameters:
     df: pd.DataFrame - DataFrame containing the sales performance data
     title: str - Title of the plot
@@ -488,7 +490,7 @@ def plot_performers_bar_chart(df, title, xlabel, ylabel, cmap='Blues', color_inv
     num_bars = len(df)
     cmap = get_cmap(cmap)
     colors = cmap(np.linspace(0, 1, num_bars))
-
+    
     # Reverse colors if color inversion is needed
     if color_inversion:
         colors = colors[::-1]
@@ -496,8 +498,8 @@ def plot_performers_bar_chart(df, title, xlabel, ylabel, cmap='Blues', color_inv
     # Set up the figure and plot the bars
     plt.figure(figsize=(12, 6))
     bars = plt.bar(
-        df['Name'],
-        df['Performance_Ratio'],
+        df['Name'], 
+        df['Performance_Ratio'], 
         color=colors,
         edgecolor='black'
     )
@@ -512,11 +514,11 @@ def plot_performers_bar_chart(df, title, xlabel, ylabel, cmap='Blues', color_inv
     for bar in bars:
         yval = bar.get_height()
         plt.text(
-            bar.get_x() + bar.get_width() / 2,
-            yval + 0.01,
+            bar.get_x() + bar.get_width() / 2, 
+            yval + 0.01, 
             f'{round(yval, 3)}',  # Show values up to 3 decimal places
-            va='bottom',
-            ha='center',
+            va='bottom', 
+            ha='center', 
             fontsize=10,
             rotation=45  # Tilt the label by 45 degrees
         )
@@ -527,7 +529,7 @@ def plot_performers_bar_chart(df, title, xlabel, ylabel, cmap='Blues', color_inv
 def plot_region_performance(region_performance_df):
     """
     Function to aggregate sales data by region, calculate performance ratio, and plot the performance by region.
-
+    
     Parameters:
     sales_team_df: Spark DataFrame - DataFrame containing sales performance data
     """
@@ -539,7 +541,7 @@ def plot_region_performance(region_performance_df):
     region_performance_pd_df = region_performance_pd_df.sort_values(by='Performance_Ratio', ascending=False)
 
     # Step 3: Define a colormap for different shades of blue
-    cmap = get_cmap('Blues')
+    cmap = get_cmap('Greens')
     colors = cmap(np.linspace(0, 1, len(region_performance_pd_df)))[::-1]
 
     # Step 4: Plot the performance by region
@@ -555,11 +557,11 @@ def plot_region_performance(region_performance_df):
     for bar in bars:
         yval = bar.get_height()
         plt.text(
-            bar.get_x() + bar.get_width() / 2,
-            yval + 0.01,
+            bar.get_x() + bar.get_width() / 2, 
+            yval + 0.01, 
             round(yval, 3),
-            va='bottom',
-            ha='center',
+            va='bottom', 
+            ha='center', 
             fontsize=10,
             rotation=45
         )
@@ -584,14 +586,14 @@ def plot_sales_rep_performance_with_profit(sales_rep_performance_pd_df):
     """
     Function to aggregate sales data by sales representative, calculate performance ratio, profit,
     and plot the performance while identifying the top performer based on profit.
-
+    
     Parameters:
     sales_team_df: Spark DataFrame - DataFrame containing sales performance data
     """
-
+   
 
     # Step 1: Define a colormap for different shades of blue
-    cmap = get_cmap('Blues')
+    cmap = get_cmap('Greens')
     colors = cmap(np.linspace(0, 1, len(sales_rep_performance_pd_df)))[::-1]
 
     # Step 2: Plotting the performance by sales representative
@@ -607,11 +609,11 @@ def plot_sales_rep_performance_with_profit(sales_rep_performance_pd_df):
     for bar in bars:
         yval = bar.get_height()
         plt.text(
-            bar.get_x() + bar.get_width() / 2,
-            yval + 0.01,
+            bar.get_x() + bar.get_width() / 2, 
+            yval + 0.01, 
             round(yval, 3),
-            va='bottom',
-            ha='center',
+            va='bottom', 
+            ha='center', 
             fontsize=10,
             rotation=90
         )
@@ -632,6 +634,7 @@ def plot_sales_rep_performance_with_profit(sales_rep_performance_pd_df):
     plt.tight_layout()
     plt.show()
 
+
 def plot_interaction_counts_by_country(data):
     """
     Function to plot interaction counts by country and interaction type for top countries.
@@ -640,28 +643,28 @@ def plot_interaction_counts_by_country(data):
     data: Pandas DataFrame - DataFrame containing interaction counts with columns for each interaction type
     """
     # Define a colormap for shades of blue
-    cmap = get_cmap('Blues')
+    cmap = get_cmap('Greens')
     num_interactions = len(data.columns)  # Number of interaction types
     colors = cmap(np.linspace(0.4, 1, num_interactions))  # Generate shades of blue
-
+    
     # Set up the figure and axis
     plt.figure(figsize=(14, 10))
     bar_width = 0.25  # Width of bars
-
+    
     # Create a list of positions for bars on x-axis
     r1 = np.arange(len(data))
     positions = [r1 + i * bar_width for i in range(num_interactions)]
-
+    
     # Plot bars for each interaction type with different shades of blue
     bars = []
     for i, interaction_type in enumerate(data.columns):
         bars.append(
             plt.bar(
-                positions[i],
-                data[interaction_type],
-                color=colors[i],
-                width=bar_width,
-                edgecolor='grey',
+                positions[i], 
+                data[interaction_type], 
+                color=colors[i], 
+                width=bar_width, 
+                edgecolor='grey', 
                 label=interaction_type
             )
         )
@@ -670,11 +673,11 @@ def plot_interaction_counts_by_country(data):
     for i in range(len(r1)):
         for j, interaction_type in enumerate(data.columns):
             plt.text(
-                positions[j][i],
-                data[interaction_type][i] + 0.1,
-                str(int(data[interaction_type][i])),
-                ha='center',
-                fontsize=10,
+                positions[j][i], 
+                data[interaction_type][i] + 0.1, 
+                str(int(data[interaction_type][i])), 
+                ha='center', 
+                fontsize=10, 
                 color='black'
             )
 
@@ -685,9 +688,9 @@ def plot_interaction_counts_by_country(data):
 
     # Set the position of the x ticks
     plt.xticks(
-        [r + (bar_width * (num_interactions - 1) / 2) for r in r1],
-        data.index,
-        rotation=45,
+        [r + (bar_width * (num_interactions - 1) / 2) for r in r1], 
+        data.index, 
+        rotation=45, 
         ha='right'
     )
 

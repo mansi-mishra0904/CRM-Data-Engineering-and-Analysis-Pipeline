@@ -4,7 +4,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Initialize Spark Session
 # Initialize Spark session
 spark = SparkSession.builder \
     .appName("Interaction Analysis") \
