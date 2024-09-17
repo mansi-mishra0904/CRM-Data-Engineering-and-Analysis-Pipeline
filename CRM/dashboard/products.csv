@@ -1,0 +1,52 @@
+Product_ID,Product_Name,Category,Price
+1,Sofa Set,Home,411 
+2,Laptop,Electronics,333 
+3,Dining Table,Home,645 
+4,Vacuum Cleaner,,290 
+5,Mobile Phone,Electronics,1738 
+6,Television,Electronics,1449 
+7,Chair,Home,1177 
+8,T-Shirt,Clothing,1585 
+9,Jacket,Clothing,1868 
+10,Bookshelf,Home,243 
+11,Jeans,Clothing,1050 
+12,Smartphone,Electronics,223 
+13,Face Cream,Beauty,456 
+14,Shoes,Clothing,413 
+15,Blazer,Clothing,1517 
+16,Tablet,Electronics,249 
+17,Shirt,Clothing,295 
+18,Lamp,Home,417 
+19,Lipstick,Beauty,777 
+20,Headphones,Electronics,1344 
+21,Dress,Clothing,850 
+22,Sweater,Clothing,842 
+23,Coat,Clothing,1541 
+24,Foundation,Beauty,976 
+25,Smartwatch,Electronics,277 
+26,Skirt,Clothing,631 
+27,Camera,Electronics,145 
+28,Mascara,Beauty,991 
+29,Scarf,Clothing,1379 
+30,Perfume,Beauty,542 
+31,Shampoo,Beauty,900 
+32,Gaming Console,,1753 
+33,Coffee Table,Home,602 
+34,Desk Lamp,Home,100 
+35,Speaker,Electronics,992 
+36,Blu-ray Player,Electronics,1017 
+37,Soundbar,Electronics,1990 
+38,E-Reader,,506 
+39,Wardrobe,Home,1190 
+40,Moisturizer,Beauty,510 
+41,Smart Light Bulb,Home,544 
+42,Hand Cream,Beauty,802 
+43,Air Conditioner,Home,1903 
+44,Table,Home,517 
+45,Hair Dryer,Beauty,897 
+46,Books,Home,1418 
+47,Router,Electronics,706 
+48,Pillow,Home,338 
+49,Printer,Electronics,802 
+50,Fan,Home,1012 
+21,Blazer,Clothing,850 
