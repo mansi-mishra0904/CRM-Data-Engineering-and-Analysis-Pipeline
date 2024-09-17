@@ -1,5 +1,4 @@
 import plotly.express as px
-import pandas as pd
 
 def plot_world_map(df, locations_col, color_col, plot_title, hover_data=None, is_discrete=True, color_scale=None, color_discrete_sequence=None):
     """
