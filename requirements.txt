@@ -94,7 +94,3 @@ traitlets==5.14.3
 typing_extensions==4.12.2
 tzdata==2024.1
 urllib3==2.2.2
-virtualenv @ file:///bitnami/blacksmith-sandox/virtualenv-20.26.3
-watchdog==4.0.2
-wcwidth==0.2.13
-webencodings==0.5.1
